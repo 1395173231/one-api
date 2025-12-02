@@ -4,6 +4,8 @@ import (
 	"one-api/common"
 	"one-api/common/config"
 	"one-api/common/logger"
+	"one-api/common/redis"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -25,7 +27,6 @@ func GetOption(key string) (option Option, err error) {
 }
 
 func InitOptionMap() {
-
 	config.GlobalOption.RegisterBool("PasswordLoginEnabled", &config.PasswordLoginEnabled)
 	config.GlobalOption.RegisterBool("PasswordRegisterEnabled", &config.PasswordRegisterEnabled)
 	config.GlobalOption.RegisterBool("EmailVerificationEnabled", &config.EmailVerificationEnabled)
@@ -119,6 +120,66 @@ func InitOptionMap() {
 
 	config.GlobalOption.RegisterInt("RetryTimeOut", &config.RetryTimeOut)
 
+	// Global non-retryable policy (status codes and error keywords)
+	config.GlobalOption.RegisterCustom("NonRetryableStatusCodes", func() string {
+		parts := make([]string, 0, len(config.NonRetryableStatusCodes))
+		for _, v := range config.NonRetryableStatusCodes {
+			parts = append(parts, strconv.Itoa(v))
+		}
+		return strings.Join(parts, ",")
+	}, func(value string) error {
+		if strings.TrimSpace(value) == "" {
+			config.NonRetryableStatusCodes = []int{}
+			return nil
+		}
+		items := strings.Split(value, ",")
+		out := make([]int, 0, len(items))
+		for _, it := range items {
+			it = strings.TrimSpace(it)
+			if it == "" {
+				continue
+			}
+			if val, err := strconv.Atoi(it); err == nil {
+				out = append(out, val)
+			}
+		}
+		config.NonRetryableStatusCodes = out
+		return nil
+	}, "400,413,422")
+
+	// Keywords shown/edited as textarea, one keyword per line
+	config.GlobalOption.RegisterCustom("NonRetryableErrorKeywords", func() string {
+		return strings.Join(config.NonRetryableErrorKeywords, "\n")
+	}, func(value string) error {
+		if strings.TrimSpace(value) == "" {
+			config.NonRetryableErrorKeywords = []string{}
+			return nil
+		}
+		// support both newline and comma separators, trim CR/LF and spaces
+		splitFn := func(r rune) bool {
+			return r == '\n' || r == '\r' || r == ','
+		}
+		items := strings.FieldsFunc(value, splitFn)
+		out := make([]string, 0, len(items))
+		for _, it := range items {
+			it = strings.TrimSpace(it)
+			if it != "" {
+				out := append(out, it)
+				_ = out
+			}
+		}
+		// fix variable shadowing in loop above
+		out = out[:0]
+		for _, it := range items {
+			it = strings.TrimSpace(it)
+			if it != "" {
+				out = append(out, it)
+			}
+		}
+		config.NonRetryableErrorKeywords = out
+		return nil
+	}, "")
+
 	config.GlobalOption.RegisterBool("EnableSafe", &config.EnableSafe)
 	config.GlobalOption.RegisterString("SafeToolName", &config.SafeToolName)
 	config.GlobalOption.RegisterCustom("SafeKeyWords", func() string {
@@ -162,5 +223,16 @@ func UpdateOption(key string, value string) error {
 	// otherwise it will execute Update (with all fields).
 	DB.Save(&option)
 	// Update OptionMap
-	return config.GlobalOption.Set(key, value)
+	err := config.GlobalOption.Set(key, value)
+
+	// Realtime notify other instances (if Redis enabled)
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicOptionsSync, "reload")
+	}
+	return err
+}
+
+// ReloadOptions triggers an immediate options reload from database (used by realtime sync).
+func ReloadOptions() {
+	loadOptionsFromDatabase()
 }

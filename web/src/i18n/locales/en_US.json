@@ -890,6 +890,14 @@
         "retryTimeOut": {
           "label": "Retry Timeout (seconds)",
           "placeholder": "Retry Timeout (seconds)"
+        },
+        "nonRetryableStatusCodes": {
+          "label": "Non-retryable HTTP Status Codes",
+          "placeholder": "Comma-separated, e.g. 400,413,422"
+        },
+        "nonRetryableErrorKeywords": {
+          "label": "Non-retryable Error Keywords",
+          "placeholder": "One per line, e.g. invalid argument\ntoo large"
         }
       },
       "logSettings": {

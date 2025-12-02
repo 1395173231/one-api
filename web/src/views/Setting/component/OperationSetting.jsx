@@ -66,6 +66,8 @@ const OperationSetting = () => {
     safeTools: [],
     ClaudeBudgetTokensPercentage: 0,
     ClaudeDefaultMaxTokens: '',
+    NonRetryableStatusCodes: '',
+    NonRetryableErrorKeywords: '',
     GeminiOpenThink: ''
   });
   const [originInputs, setOriginInputs] = useState({});
@@ -240,6 +242,12 @@ const OperationSetting = () => {
           }
           if (originInputs['RetryTimeOut'] !== inputs.RetryTimeOut) {
             await updateOption('RetryTimeOut', inputs.RetryTimeOut);
+          }
+          if (originInputs['NonRetryableStatusCodes'] !== inputs.NonRetryableStatusCodes) {
+            await updateOption('NonRetryableStatusCodes', inputs.NonRetryableStatusCodes);
+          }
+          if (originInputs['NonRetryableErrorKeywords'] !== inputs.NonRetryableErrorKeywords) {
+            await updateOption('NonRetryableErrorKeywords', inputs.NonRetryableErrorKeywords);
           }
           break;
         case 'other':
@@ -453,6 +461,36 @@ const OperationSetting = () => {
                 onChange={handleInputChange}
                 label={t('setting_index.operationSettings.generalSettings.retryTimeOut.label')}
                 placeholder={t('setting_index.operationSettings.generalSettings.retryTimeOut.placeholder')}
+                disabled={loading}
+              />
+            </FormControl>
+          </Stack>
+          <Stack direction={{ sm: 'column', md: 'row' }} spacing={{ xs: 3, sm: 2, md: 4 }}>
+            <FormControl fullWidth>
+              <InputLabel htmlFor="NonRetryableStatusCodes">
+                {t('setting_index.operationSettings.generalSettings.nonRetryableStatusCodes.label')}
+              </InputLabel>
+              <OutlinedInput
+                id="NonRetryableStatusCodes"
+                name="NonRetryableStatusCodes"
+                value={inputs.NonRetryableStatusCodes}
+                onChange={handleInputChange}
+                label={t('setting_index.operationSettings.generalSettings.nonRetryableStatusCodes.label')}
+                placeholder={t('setting_index.operationSettings.generalSettings.nonRetryableStatusCodes.placeholder')}
+                disabled={loading}
+              />
+            </FormControl>
+            <FormControl fullWidth>
+              <TextField
+                multiline
+                minRows={5}
+                maxRows={15}
+                id="NonRetryableErrorKeywords"
+                label={t('setting_index.operationSettings.generalSettings.nonRetryableErrorKeywords.label')}
+                value={inputs.NonRetryableErrorKeywords}
+                name="NonRetryableErrorKeywords"
+                onChange={handleTextFieldChange}
+                placeholder={t('setting_index.operationSettings.generalSettings.nonRetryableErrorKeywords.placeholder')}
                 disabled={loading}
               />
             </FormControl>

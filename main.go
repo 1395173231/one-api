@@ -8,9 +8,11 @@ import (
 	"one-api/common"
 	"one-api/common/cache"
 	"one-api/common/config"
+	"one-api/common/election"
 	"one-api/common/logger"
 	"one-api/common/notify"
 	"one-api/common/oidc"
+	"one-api/common/realtime"
 	"one-api/common/redis"
 	"one-api/common/requester"
 	"one-api/common/search"
@@ -24,10 +26,12 @@ import (
 	"one-api/relay/task"
 	"one-api/router"
 	"one-api/safty"
+	"strconv"
 	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	redissession "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -53,15 +57,17 @@ func main() {
 	if err != nil {
 		logger.FatalLog("failed to initialize user token: " + err.Error())
 	}
-
+	// Initialize Redis
+	redis.InitRedisClient()
+	election.StartLeaderElection()
 	// Initialize SQL Database
 	model.SetupDB()
 	defer model.CloseDB()
-	// Initialize Redis
-	redis.InitRedisClient()
 	cache.InitCacheManager()
 	// Initialize options
 	model.InitOptionMap()
+	// Start Redis realtime sync (options/channels)
+	realtime.StartRealtimeSync()
 	// Initialize oidc
 	oidc.InitOIDCConfig()
 	// Initialize wenauthn
@@ -107,8 +113,12 @@ func initMemoryCache() {
 
 	logger.SysLog("memory cache enabled")
 	logger.SysLog(fmt.Sprintf("sync frequency: %d seconds", syncFrequency))
-	go model.SyncOptions(syncFrequency)
-	go SyncChannelCache(syncFrequency)
+	if config.RedisEnabled {
+		logger.SysLog("Redis realtime sync enabled; skip periodic sync")
+	} else {
+		go model.SyncOptions(syncFrequency)
+		go SyncChannelCache(syncFrequency)
+	}
 }
 
 func initSync() {
@@ -131,7 +141,21 @@ func initHttpServer() {
 		server.TrustedPlatform = trustedHeader
 	}
 
-	store := cookie.NewStore([]byte(config.SessionSecret))
+	var store sessions.Store
+	if config.RedisEnabled {
+		opt := redis.ParseRedisOption()
+		if opt != nil {
+			rs, err := redissession.NewStoreWithDB(64, "tcp", opt.Addr, opt.Username, opt.Password, strconv.Itoa(opt.DB), []byte(config.SessionSecret))
+			if err != nil {
+				logger.SysError("failed to initialize redis session store: " + err.Error() + ", fallback to cookie store")
+			} else {
+				store = rs
+			}
+		}
+	}
+	if store == nil {
+		store = cookie.NewStore([]byte(config.SessionSecret))
+	}
 	store.Options(sessions.Options{
 		Path:     "/",
 		MaxAge:   2592000, // 30 days

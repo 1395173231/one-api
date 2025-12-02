@@ -773,6 +773,14 @@
           "label": "重试超时时间(秒)",
           "placeholder": "重试超时时间(秒)"
         },
+        "nonRetryableStatusCodes": {
+          "label": "不可重试状态码",
+          "placeholder": "以逗号分隔，例如：400,413,422"
+        },
+        "nonRetryableErrorKeywords": {
+          "label": "不可重试错误关键词",
+          "placeholder": "每行一个，例如：invalid argument\ntoo large"
+        },
         "displayInCurrency": "以货币形式显示额度",
         "displayTokenStat": "Billing 相关 API 显示令牌额度而非用户额度",
         "approximateToken": "使用近似的方式估算 token 数以减少计算量",

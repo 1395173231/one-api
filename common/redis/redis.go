@@ -14,6 +14,10 @@ var RDB *redis.Client
 
 const Nil = redis.Nil
 
+// Realtime sync topics
+const RedisTopicOptionsSync = "onehub:sync:options"
+const RedisTopicChannelsSync = "onehub:sync:channels"
+
 // InitRedisClient This function is called after init()
 func InitRedisClient() (err error) {
 	redisConn := viper.GetString("redis_conn_string")
@@ -32,8 +36,9 @@ func InitRedisClient() (err error) {
 		logger.FatalLog("failed to parse Redis connection string: " + err.Error())
 		return
 	}
-
-	opt.DB = viper.GetInt("redis_db")
+	if opt.DB == 0 {
+		opt.DB = viper.GetInt("redis_db")
+	}
 	RDB = redis.NewClient(opt)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -105,4 +110,11 @@ func RedisSAdd(key string, members ...interface{}) error {
 func RedisSIsMember(key string, member interface{}) (bool, error) {
 	ctx := context.Background()
 	return RDB.SIsMember(ctx, key, member).Result()
+}
+
+// Event publishing helper
+func RedisPublish(channel string, message string) error {
+	ctx := context.Background()
+	full := config.InstanceID + "|" + message
+	return RDB.Publish(ctx, channel, full).Err()
 }

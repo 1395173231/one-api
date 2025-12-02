@@ -13,7 +13,7 @@ func InitConf() {
 	defaultConfig()
 	setEnv()
 	Language = viper.GetString("language")
-	IsMasterNode = viper.GetString("node_type") != "slave"
+	IsMasterNode = viper.GetString("node_type") == "master"
 	RequestInterval = time.Duration(viper.GetInt("polling_interval")) * time.Second
 	SessionSecret = utils.GetOrDefault("session_secret", SessionSecret)
 	UserInvoiceMonth = viper.GetBool("user_invoice_month")
@@ -51,4 +51,7 @@ func defaultConfig() {
 	viper.SetDefault("uptime_kuma.enable", false)
 	viper.SetDefault("uptime_kuma.domain", "")
 	viper.SetDefault("uptime_kuma.status_page_name", "")
+	// Leader election via Redis
+	viper.SetDefault("leader_election.enable", true)
+	viper.SetDefault("leader_election.lease_seconds", 15)
 }

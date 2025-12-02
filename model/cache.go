@@ -196,10 +196,10 @@ func HandleOldTokenMaxId() {
 	}
 
 	// 检测OldUserTokensCacheKey是否存在
-	exists, _ := redis.RedisExists(OldUserTokensCacheKey)
-	if exists {
-		return
-	}
+	//exists, _ := redis.RedisExists(OldUserTokensCacheKey)
+	//if exists {
+	//	return
+	//}
 	const batchSize = 1000
 	var offset int
 

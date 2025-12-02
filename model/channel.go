@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"one-api/common/config"
 	"one-api/common/logger"
+	"one-api/common/redis"
 	"one-api/common/utils"
 	"slices"
 	"strings"
@@ -167,6 +168,12 @@ func DeleteChannelTag(channelId int) error {
 
 func BatchDeleteChannel(ids []int) (int64, error) {
 	result := DB.Where("id IN ?", ids).Delete(&Channel{})
+	if result.Error == nil && result.RowsAffected > 0 {
+		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
+	}
 	return result.RowsAffected, result.Error
 }
 
@@ -177,6 +184,9 @@ func BatchInsertChannels(channels []Channel) error {
 	}
 
 	ChannelGroup.Load()
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 	return nil
 }
 
@@ -193,6 +203,9 @@ func BatchUpdateChannelsAzureApi(params *BatchChannelsParams) (int64, error) {
 
 	if db.RowsAffected > 0 {
 		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
 	}
 	return db.RowsAffected, nil
 }
@@ -222,6 +235,9 @@ func BatchDelModelChannels(params *BatchChannelsParams) (int64, error) {
 
 	if count > 0 {
 		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
 	}
 
 	return count, nil
@@ -272,6 +288,9 @@ func (channel *Channel) Insert() error {
 	err := DB.Omit("UsedQuota").Create(channel).Error
 	if err == nil {
 		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
 	}
 
 	return err
@@ -283,6 +302,9 @@ func (channel *Channel) Update(overwrite bool) error {
 
 	if err == nil {
 		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
 	}
 
 	return err
@@ -327,6 +349,9 @@ func (channel *Channel) Delete() error {
 	err := DB.Delete(channel).Error
 	if err == nil {
 		ChannelGroup.Load()
+		if config.RedisEnabled {
+			_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+		}
 	}
 	return err
 }
@@ -356,6 +381,9 @@ func UpdateChannelStatusById(id int, status int) {
 	tx.Commit()
 
 	go ChannelGroup.ChangeStatus(id, status == config.ChannelStatusEnabled)
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 }
 
 func UpdateChannelUsedQuota(id int, quota int) {
@@ -375,6 +403,9 @@ func updateChannelUsedQuota(id int, quota int) {
 
 func DeleteDisabledChannel() (int64, error) {
 	result := DB.Where("status = ? or status = ?", config.ChannelStatusAutoDisabled, config.ChannelStatusManuallyDisabled).Delete(&Channel{})
+	if result.Error == nil && result.RowsAffected > 0 && config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 	return result.RowsAffected, result.Error
 }
 

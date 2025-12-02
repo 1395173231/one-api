@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"one-api/common/config"
+	"one-api/common/redis"
 	"strings"
 	"time"
 )
@@ -169,6 +170,9 @@ func UpdateChannelsTag(tag string, channel *Channel) error {
 	tx.Commit()
 
 	ChannelGroup.Load()
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 
 	return err
 }
@@ -192,6 +196,9 @@ func DeleteChannelsTag(tag string, delDisabled bool) error {
 
 	tx.Commit()
 	ChannelGroup.Load()
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 
 	return err
 }
@@ -207,6 +214,9 @@ func ChangeChannelsTagStatus(tag string, status int) error {
 	}
 
 	ChannelGroup.Load()
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 
 	return nil
 }
@@ -218,5 +228,8 @@ func UpdateChannelsTagPriority(tag string, value int) error {
 	}
 
 	ChannelGroup.Load()
+	if config.RedisEnabled {
+		_ = redis.RedisPublish(redis.RedisTopicChannelsSync, "reload")
+	}
 	return nil
 }

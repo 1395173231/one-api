@@ -880,6 +880,14 @@
         "retryTimeOut": {
           "label": "重試超時時間(秒)",
           "placeholder": "重試超時時間(秒)"
+        },
+        "nonRetryableStatusCodes": {
+          "label": "不可重試狀態碼",
+          "placeholder": "以逗號分隔，例如：400,413,422"
+        },
+        "nonRetryableErrorKeywords": {
+          "label": "不可重試錯誤關鍵詞",
+          "placeholder": "每行一個，例如：invalid argument\ntoo large"
         }
       },
       "logSettings": {
